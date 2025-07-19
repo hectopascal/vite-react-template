@@ -1,0 +1,216 @@
+classDiagram
+    class User {
+        -userId: string
+        -email: string
+        -passwordHash: string
+        -name: string
+        -skillLevel: enum
+        -subscriptionTier: enum
+        -registrationDate: date
+        -lastLoginDate: date
+        +register(email, password, name): User
+        +login(email, password): AuthToken
+        +updateProfile(profileData): User
+        +getSubscriptionDetails(): Subscription
+        +upgradeSubscription(tier): Subscription
+    }
+
+    class Profile {
+        -profileId: string
+        -userId: string
+        -age: number
+        -playingStyle: string
+        -goals: string[]
+        -availableTime: number
+        -equipmentDetails: object
+        -playingFrequency: string
+        +updateGoals(goals): Profile
+        +setAvailableTime(hours): Profile
+        +updatePlayingStyle(style): Profile
+    }
+
+    class Video {
+        -videoId: string
+        -userId: string
+        -title: string
+        -description: string
+        -uploadDate: date
+        -duration: number
+        -fileSize: number
+        -fileUrl: string
+        -thumbnailUrl: string
+        -processingStatus: enum
+        +upload(file, metadata): Video
+        +getAnalysisStatus(): string
+        +delete(): boolean
+        +share(recipients): ShareLink
+    }
+
+    class VideoAnalysis {
+        -analysisId: string
+        -videoId: string
+        -completionDate: date
+        -strokeType: enum
+        -technicalMetrics: object
+        -annotations: Annotation[]
+        -feedback: FeedbackItem[]
+        -confidenceScore: number
+        +getResults(): object
+        +compareWithPrevious(analysisId): ComparisonResult
+        +generateFeedback(): FeedbackItem[]
+        +exportReport(): Report
+    }
+
+    class Annotation {
+        -annotationId: string
+        -analysisId: string
+        -timestamp: number
+        -frameNumber: number
+        -type: enum
+        -coordinates: object
+        -description: string
+        +render(context): void
+    }
+
+    class TrainingProgram {
+        -programId: string
+        -userId: string
+        -creationDate: date
+        -targetSkills: string[]
+        -duration: number
+        -difficulty: enum
+        -sessions: Session[]
+        +generate(userProfile, goals): TrainingProgram
+        +updateProgress(sessionId, progress): TrainingProgram
+        +adjustDifficulty(level): TrainingProgram
+        +getNextSession(): Session
+    }
+
+    class Session {
+        -sessionId: string
+        -programId: string
+        -name: string
+        -description: string
+        -duration: number
+        -drills: Drill[]
+        -completionStatus: enum
+        -scheduledDate: date
+        +markComplete(feedback): Session
+        +reschedule(date): Session
+        +getDrillDetails(): Drill[]
+    }
+
+    class Drill {
+        -drillId: string
+        -sessionId: string
+        -name: string
+        -description: string
+        -targetSkill: string
+        -duration: number
+        -difficulty: enum
+        -videoUrl: string
+        -instructions: string[]
+        +markComplete(performance): Drill
+        +getInstructions(): string[]
+    }
+
+    class Performance {
+        -performanceId: string
+        -userId: string
+        -metrics: object
+        -creationDate: date
+        -strengthAreas: string[]
+        -improvementAreas: string[]
+        -progress: object
+        +calculateImprovement(timeframe): ProgressReport
+        +getMetrics(): object
+        +compareWithPeers(): BenchmarkResult
+    }
+
+    class FeedbackItem {
+        -feedbackId: string
+        -analysisId: string
+        -type: enum
+        -severity: enum
+        -description: string
+        -actionableSteps: string[]
+        -relatedResources: Resource[]
+        +generateSteps(): string[]
+        +getRelatedDrills(): Drill[]
+    }
+
+    class Coach {
+        -coachId: string
+        -userId: string
+        -specializations: string[]
+        -experience: number
+        -students: string[]
+        -availability: object
+        -rating: number
+        +addStudent(userId): Coach
+        +removeStudent(userId): Coach
+        +updateAvailability(slots): Coach
+        +reviewStudentVideos(userId): VideoAnalysis[]
+    }
+
+    class Notification {
+        -notificationId: string
+        -userId: string
+        -type: enum
+        -content: string
+        -creationDate: date
+        -isRead: boolean
+        -actionUrl: string
+        +markAsRead(): Notification
+        +send(): boolean
+    }
+
+    class AnalyticsService {
+        +analyzeSwing(videoId): Promise<VideoAnalysis>
+        +detectStrokeType(frames): string
+        +extractKeyFrames(video): Frame[]
+        +detectPosture(frame): PostureData
+        +calculateMetrics(postureData): TechnicalMetrics
+        +generateFeedback(metrics): FeedbackItem[]
+    }
+
+    class TrainingService {
+        +createProgram(userId, goals): TrainingProgram
+        +recommendDrills(skillLevel, areas): Drill[]
+        +adjustProgram(programId, feedback): TrainingProgram
+        +trackCompletion(userId, sessionId): CompletionStats
+        +generateSchedule(availability, frequency): SessionSchedule
+    }
+
+    class VideoProcessingService {
+        +uploadVideo(file, metadata): Promise<Video>
+        +processVideo(videoId): ProcessingJob
+        +extractFrames(videoId): Frame[]
+        +generateThumbnail(videoId): string
+        +storeProcessedVideo(videoId, results): StorageResult
+    }
+
+    class PerformanceTrackingService {
+        +calculateProgress(userId, timeframe): ProgressData
+        +identifyWeaknesses(analysisResults): ImprovementArea[]
+        +trackMetricsOverTime(userId, metric): TimeSeriesData
+        +generateInsights(performanceData): Insight[]
+        +createBenchmarks(skillLevel): Benchmark[]
+    }
+
+    User "1" -- "1" Profile: has
+    User "1" -- "*" Video: uploads
+    User "1" -- "*" TrainingProgram: follows
+    User "1" -- "1" Performance: tracks
+    Video "1" -- "1" VideoAnalysis: generates
+    VideoAnalysis "1" -- "*" Annotation: contains
+    VideoAnalysis "1" -- "*" FeedbackItem: provides
+    TrainingProgram "1" -- "*" Session: consists of
+    Session "1" -- "*" Drill: includes
+    User "*" -- "*" Coach: connects with
+    User "1" -- "*" Notification: receives
+    
+    AnalyticsService -- VideoAnalysis: creates
+    TrainingService -- TrainingProgram: manages
+    VideoProcessingService -- Video: processes
+    PerformanceTrackingService -- Performance: monitors

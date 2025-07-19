@@ -1,0 +1,132 @@
+sequenceDiagram
+    actor User
+    participant UI as Frontend UI
+    participant API as API Gateway
+    participant Auth as Auth Service
+    participant VS as Video Service
+    participant AS as Analytics Service
+    participant TS as Training Service
+    participant PS as Performance Service
+    participant DB as Database
+    participant S3 as S3 Storage
+    participant ML as ML Processing
+
+    %% User Registration and Authentication Flow
+    User->>UI: Register/Login
+    UI->>API: POST /auth/register or /auth/login
+    API->>Auth: validateCredentials()
+    Auth->>DB: checkUserExists()
+    DB-->>Auth: userExists: boolean
+    alt New User Registration
+        Auth->>DB: createUser(userData)
+        DB-->>Auth: userId
+        Auth->>DB: createProfile(userId)
+        DB-->>Auth: profileCreated
+    else Existing User Login
+        Auth->>DB: validatePassword()
+        DB-->>Auth: passwordValid: boolean
+    end
+    Auth->>Auth: generateJWT()
+    Auth-->>API: authToken
+    API-->>UI: authResponse
+    UI->>UI: storeToken()
+
+    %% Video Analysis Flow
+    User->>UI: Upload Video
+    UI->>API: POST /videos/upload
+    API->>Auth: validateToken()
+    Auth-->>API: tokenValid: boolean
+    API->>VS: uploadVideo(file, userId)
+    VS->>S3: storeVideo(file)
+    S3-->>VS: videoUrl
+    VS->>DB: saveVideoMetadata(videoId, userId, videoUrl)
+    DB-->>VS: videoSaved
+    VS->>API: videoQueued
+    API-->>UI: uploadSuccess
+    UI-->>User: Show upload confirmation
+
+    %% Asynchronous Video Processing
+    VS->>AS: queueVideoForAnalysis(videoId)
+    AS->>S3: fetchVideo(videoId)
+    S3-->>AS: videoData
+    AS->>ML: analyzeSwing(videoData)
+    ML->>ML: detectStrokeType()
+    ML->>ML: extractPoseData()
+    ML->>ML: calculateMetrics()
+    ML-->>AS: analysisResults
+    AS->>DB: saveAnalysisResults(videoId, results)
+    DB-->>AS: analysisSaved
+    AS->>PS: updatePerformanceMetrics(userId, metrics)
+    PS->>DB: savePerformanceData(userId, metrics)
+    DB-->>PS: performanceSaved
+    AS->>VS: notifyProcessingComplete(videoId)
+    VS->>API: sendNotification(userId, "Video analysis complete")
+    API->>UI: pushNotification()
+    UI-->>User: Show analysis notification
+
+    %% View Video Analysis
+    User->>UI: View Analysis
+    UI->>API: GET /videos/{videoId}/analysis
+    API->>VS: getVideoAnalysis(videoId)
+    VS->>DB: fetchAnalysisData(videoId)
+    DB-->>VS: analysisData
+    VS-->>API: analysisResults
+    API-->>UI: analysisData
+    UI-->>User: Display analysis with annotations
+
+    %% Generate Training Program
+    User->>UI: Request Training Program
+    UI->>API: POST /training/program
+    API->>Auth: validateToken()
+    Auth-->>API: tokenValid: boolean
+    API->>TS: createProgram(userId, goals)
+    TS->>DB: fetchUserProfile(userId)
+    DB-->>TS: userProfile
+    TS->>PS: getUserPerformanceData(userId)
+    PS->>DB: fetchPerformanceMetrics(userId)
+    DB-->>PS: performanceData
+    PS-->>TS: performanceMetrics
+    TS->>TS: generatePersonalizedProgram(userProfile, performanceMetrics)
+    TS->>DB: saveTrainingProgram(userId, program)
+    DB-->>TS: programSaved
+    TS-->>API: trainingProgram
+    API-->>UI: programData
+    UI-->>User: Display training program
+
+    %% Track Session Completion
+    User->>UI: Mark Session Complete
+    UI->>API: PUT /training/sessions/{sessionId}/complete
+    API->>TS: completeSession(sessionId, feedback)
+    TS->>DB: updateSessionStatus(sessionId, "complete")
+    DB-->>TS: sessionUpdated
+    TS->>PS: recordSessionPerformance(userId, sessionId, feedback)
+    PS->>DB: saveSessionMetrics(userId, sessionId, metrics)
+    DB-->>PS: metricsSaved
+    PS->>PS: recalculateProgress(userId)
+    PS->>DB: updateProgress(userId, progressData)
+    DB-->>PS: progressUpdated
+    PS-->>TS: performanceUpdated
+    TS-->>API: sessionCompleteResult
+    API-->>UI: completionConfirmation
+    UI-->>User: Show progress update
+
+    %% Real-time Video Analysis
+    User->>UI: Start Real-time Analysis
+    UI->>UI: accessCamera()
+    UI->>UI: processVideoFrames()
+    loop Every few frames
+        UI->>UI: analyzePose(frame)
+        UI->>UI: detectSwingMotion(poses)
+        UI->>UI: provideFeedback(analysis)
+        UI-->>User: Show real-time feedback
+    end
+    User->>UI: End Session
+    UI->>API: POST /videos/sessions
+    API->>VS: saveSession(sessionData)
+    VS->>S3: storeSessionHighlights(videoSegments)
+    S3-->>VS: highlightsStored
+    VS->>DB: saveSessionMetadata(sessionId, highlights)
+    DB-->>VS: sessionSaved
+    VS-->>API: sessionSummary
+    API-->>UI: sessionResults
+    UI-->>User: Display session summary
